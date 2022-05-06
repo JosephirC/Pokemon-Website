@@ -13,9 +13,17 @@ const serverUrl = "https://lifap5.univ-lyon1.fr";
  * Fait une requête GET authentifiée sur /whoami
  * @returns une promesse du login utilisateur ou du message d'erreur
  */
+/*
+ function getVal() {
+  // Sélectionner l'élément input et récupérer sa valeur
+  var input = document.getElementById("in").value;
+  // Afficher la valeur
+  console.log(input);
+  return input;
+}*/
 
- function fetchWhoami() {
-  return fetch(serverUrl + "/whoami", { headers: { "Api-Key": apiKey } })
+ function fetchWhoami(api) {
+  return fetch(serverUrl + "/whoami", { headers: { "Api-Key": api } })
     .then((response) => {
       if (response.status === 401) {
         return response.json().then((json) => {
@@ -43,6 +51,14 @@ function fetchPokemon() {
     .catch((erreur) => ({ err: erreur }));
 }
 
+/*
+async function fetchPokemon() {
+  const response = await fetch(serverUrl + "/pokemon")
+  const data = await response.json();
+  console.log(data)
+}*/
+//fetchPokemon()
+
 /**
  * Fait une requête sur le serveur et insère le login dans la modale d'affichage
  * de l'utilisateur puis déclenche l'affichage de cette modale.
@@ -50,8 +66,8 @@ function fetchPokemon() {
  * @param {Etat} etatCourant l'état courant
  * @returns Une promesse de mise à jour
  */
- function lanceWhoamiEtInsereLogin(etatCourant) {
-  return fetchWhoami().then((data) => {
+ function lanceWhoamiEtInsereLogin(api,etatCourant) {
+  return fetchWhoami(api).then((data) => {
     majEtatEtPage(etatCourant, {
       login: data.user, // qui vaut undefined en cas d'erreur
       errLogin: data.err, // qui vaut undefined si tout va bien
@@ -64,13 +80,16 @@ function lancePoke(etatCourant) {
   return fetchPokemon().then((data) => {
     console.log(data)
     majEtatEtPage(etatCourant, {
-      pokemon: data,
+      pokemon: data.sort(((a, b) => {return a.PokedexNumber - b.PokedexNumber})),
       initialData : data,
       inputSearch: "",
       NbPokemonAffiche: 10,
       NbPokemonFiltre : 10, 
-      triC : "croissant",
-      triD : "decroissant",
+      triType : true,
+      triDirection : "asc",  
+      triColumn : "PokedexNumber", 
+      triAb : false,
+      triTy: false,
     });
   });
 }
@@ -87,28 +106,26 @@ function lister(liste){
  * @returns un objet contenant le code HTML dans le champ html et un objet vide
  * dans le champ callbacks
  */
- function genereModaleLoginBody(etatCourant) {
+function genereModaleLoginBody(etatCourant) {
   const text =
-  etatCourant.errLogin !== undefined
-    ? etatCourant.errLogin
-    : etatCourant.login;
-  //const api = document.getElementById("in").value;
+    etatCourant.errLogin !== undefined
+      ? etatCourant.errLogin
+      : etatCourant.login === undefined
+      ? ""
+      : etatCourant.login;
   return {
     html: `
-  <section class="modal-card-body">
-  ${text}
-    <label for= "API">Clé API</label><br />
-    <input id ="in" class="input" value="" >
+    <section class="modal-card-body">
+  <label>Clé d'API:</label><br/>
+  <input type="password" class="input" id="inputApi"/>
+    <p>${text}</p>
   </section>
   `,
     callbacks: {
-     /* "in": {
-      onclick: () => majEtatEtPage(etatCourant, { getVal() }),
-    },*/
   },
   };
 }
-
+/********************verifier si la clé d’API n’est pas valable******************************/
 /**
  * Génère le code HTML du titre de la modale de login et les callbacks associés.
  *
@@ -142,21 +159,24 @@ function genereModaleLoginHeader(etatCourant) {
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
- function genereModaleLoginFooter(etatCourant) {
+function genereModaleLoginFooter(etatCourant) {
   return {
     html: `
   <footer class="modal-card-foot" style="justify-content: flex-end">
-    <button id="btn-close-login-modal2" class="button" tabindex="0">Fermer</button>
-    <button id="btn-close-login-modal1" class="is-success button" tabindex="0">Valider</button>
+    <button id="btn-close-login-modal2" class="button">Fermer</button>
+    <button id="btn-submit-login-modal" class="is-success button">Valider</button>
   </footer>
   `,
     callbacks: {
       "btn-close-login-modal2": {
         onclick: () => majEtatEtPage(etatCourant, { loginModal: false }),
       },
-      "btn-close-login-modal1": {
-        onclick: () => majEtatEtPage(etatCourant, { loginModal: false }),
-      },
+      "btn-submit-login-modal":{
+        onclick: function(){
+          const api = document.getElementById("inputApi").value;
+          return lanceWhoamiEtInsereLogin(api, etatCourant);
+        }
+      }
     },
   };
 }
@@ -208,13 +228,16 @@ function afficheModaleConnexion(etatCourant) {
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
- function genereBoutonConnexion(etatCourant) {
-  var api = fetchWhoami();
+function genereBoutonConnexion(etatCourant) {
   const html = `
   <div class="navbar-end">
     <div class="navbar-item">
       <div class="buttons">
-        ${api === apiKey ? `<a id="btn-open-login-modal" class="button is-light"> Deconnexion </a>`: `<a id="btn-open-login-modal" class="button is-light"> Connexion </a>`}
+      ${etatCourant.login === undefined 
+      ? `<a id="btn-open-login-modal" class="button is-light"> Connexion </a>`
+      : `<p>${etatCourant.login}</p>
+      <a id="btn-dc-login-modal" class="button is-light"> Déconnexion </a>`}
+        
       </div>
     </div>
   </div>`;
@@ -222,11 +245,16 @@ function afficheModaleConnexion(etatCourant) {
     html: html,
     callbacks: {
       "btn-open-login-modal": {
-        onclick: () => afficheModaleConnexion(etatCourant),
+        onclick: () => majEtatEtPage(etatCourant, {loginModal: true}),
       },
+      "btn-dc-login-modal":{
+        onclick: () => majEtatEtPage(etatCourant, {login: undefined})
+      }
     },
   };
 }
+
+    
 
 /**
  * Génère le code HTML de la barre de navigation et les callbacks associés.
@@ -241,33 +269,29 @@ function genereBarreNavigation(etatCourant) {
     html: `
   <nav class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar">
-      <div class="navbar-item">
+    <div class="navbar-item">
       <div class ="search-bar">
       <input id="inputSearch" class="input" placeholder= "Chercher un pokemon" type="text" value="${etatCourant.inputSearch}" >
       </div>
-      <div class="buttons">
+      <div class="navbar-item"><div class="buttons">
           <a id="btn-pokedex" class="button is-light"> Pokedex </a>
-          <a id="btn-combat" class="button is-light"> Combat </a>
+          <a id="btn-combat" class="button is-light"> Combat </a> 
           <a id="btn-search" class="button is-light"> Search </a>
-      </div></div>
+      </div>
+      </div>
       ${connexion.html}
     </div>
   </nav>`,
     callbacks: {
       ...connexion.callbacks,
-      //"inputSearch": { onchange: () => searchPokemon(etatCourant)/*, onkeyup : () => searchPokemon(etatCourant)*/ },
-
-      "btn-search": {
-        onclick: () => searchPokemon(etatCourant)
-      },
+      "btn-search": {onclick: () => searchPokemon(etatCourant)},
       "btn-pokedex": { onclick: () => console.log("click bouton pokedex") },
     },
-    
   };
 }
 
 function generePokemon(etatCourant) {
-  const tab = etatCourant.pokemon;
+  const tab = etatCourant.pokemon
   return { 
     html:
     tab.filter((_,i) => i < etatCourant.NbPokemonAffiche).reduce((acc, poke) => acc + `
@@ -287,7 +311,8 @@ function generePokemon(etatCourant) {
 }
 
 function genereTableaPok(etatCourant){
-  const TabPok=generePokemon(etatCourant);
+  //const eI = etatCourant.etatInitial;
+  const TabPok=generePokemon(etatCourant);4
   return { 
     html: `
   <div id="tbl-pokemons">
@@ -295,13 +320,19 @@ function genereTableaPok(etatCourant){
     <thead>
       <tr>
         <th><span>Image</span></th>
-        <th>
-          <span>#</span
-          ><span class="icon"><i class="fas fa-angle-up"></i></span>
+        <th id = "number">
+          <span>#</span>
+          <span id="number" class="icon"><i class="fas fa-angle-up"></i></span>
         </th>
-        <th><span>Name</span></th>
-        <th><span>Abilities</span></th>
-        <th><span>Types</span></th>
+        <th id="asc"><span id="name">Name</span>
+          <span id="number" class="icon"><i class="fas fa-angle-up"></i></span>
+        </th>
+        <th id="asc"><span id="ability">Abilities</span>
+        <span id="number" class="icon"><i class="fas fa-angle-up"></i></span>
+        </th>
+        <th id="asc"><span id="type">Types</span>
+        <span id="number" class="icon"><i class="fas fa-angle-up"></i></span>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -310,9 +341,46 @@ function genereTableaPok(etatCourant){
     </table>
   </div>
   `,
-    callbacks:{},
+    callbacks:{
+      "number" : {
+        onclick : () => {switchTri(etatCourant, "PokedexNumber"), inverse(etatCourant, "number")}
+      },
+      "name" : {
+        onclick : () => {switchTri(etatCourant, "Name"), inverse(etatCourant, "name")}
+      },
+      "ability" : {
+        onclick : () => {switchTri(etatCourant, "Abilities"), inverse(etatCourant, "ability")}
+      },
+      "type" : {
+        onclick : () => {switchTri(etatCourant, "Types"), inverse(etatCourant, "type")}
+      },
+    },
   };
 }
+/*
+function generePokemon(etatCourant) {
+  const tab = etatCourant.pokemon;
+  const listPoke =tab.forEach( poke => {
+    const list = document.createElement("div");
+    list.setAttribute("class","table");
+    list.innerHTML =`
+        <td><img
+                alt="${poke.Name}"
+                src="${poke.Images.Detail}"
+                width="64" />
+        </td>
+        <td><div class="content">${poke.PokedexNumber}</div></td>
+        <td><div class="content">${poke.Name}</div></td>
+        <td>${lister(poke.Abilities)}</td>
+        <td>${lister(poke.Types)}</td>
+      </tr>`
+      searchResult.appendChild(list);
+  })
+  return { 
+    html: listPoke,
+    callbacks: {...listPoke.callbacks},
+  };
+}*/
 
 
 function addPokemon(etatCourant){
@@ -334,11 +402,8 @@ function genereBoutonAff(etatCourant){
     html:  `
     <div class = "buttons">
     ${etatCourant.NbPokemonAffiche <= etatCourant.NbPokemonFiltre ? `<a id = "btn-more" class= "button is-light"> More </a>` : '' }
-    
-
       ${etatCourant.NbPokemonAffiche > 10 ? `<a id = "btn-less" class = "button is-light"> less </a>` : ''}
     </div>`,
-    
       callbacks : {
           "btn-more" : {
             onclick : () => addPokemon(etatCourant),
@@ -353,14 +418,11 @@ function genereBoutonAff(etatCourant){
 function tabDesPokemon(etatCourant){
   return etatCourant.pokemon
   .filter( poke => poke.Name.toLowerCase().include(etatCourant.namesearch.toLowerCase()) )
-  .filter((poke, i) => i < etatCourant.NbPokemon)
+  .filter( i => i < etatCourant.NbPokemon)
 }
 
 function searchPokemon(etatCourant){
   console.log(document.getElementById("inputSearch").value)
-  /*majEtatEtPage(etatCourant, {
-    namesearch : document.getElementById("search-bar").value
-  });*/
   const value = document.getElementById("inputSearch").value
   const filteredTable = etatCourant.initialData
   .filter( poke => poke.Name.toLowerCase()/* == value */.includes(value.toLowerCase()))
@@ -371,33 +433,219 @@ function searchPokemon(etatCourant){
    });
 }
 
-function triNumberC(etatCourant){
-  return (etatCourant.triC == "croissant" ?
-    etatCourant.pokemon.sort(function(a,b) {return a.PokedexNumber - b.PokedexNumber}) :
-    etatCourant.pokemon.sort(function(a,b) {return b.PokedexNumber - a.PokedexNumber})
+function triNumber(etatCourant, direction, column){
+ // const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  etatCourant.initialData.sort((a, b) => {return a[column] - b[column]}) :
+  etatCourant.initialData.sort(function(a,b) {return b[column] - a[column]})
   )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
 }
 
-function triNumberD(etatCourant){
-  return (etatCourant.triD == "decroissant" ?
-    etatCourant.pokemon.sort(function(a,b) {return a.PokedexNumber - b.PokedexNumber}) :
-    etatCourant.pokemon.sort(function(a,b) {return b.PokedexNumber - a.PokedexNumber})
+function triString(etatCourant, direction, column){
+  //const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  etatCourant.initialData.sort((a, b) => {return a[column].localeCompare(b[column])}) :
+  etatCourant.initialData.sort(function(a,b) {return b[column][0].localeCompare(a[column][0])})
   )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}
+function triArray(etatCourant, direction, column){
+  //const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  //etatCourant.pokemon.sort((a, b) => {return a[column][0].localeCompare(b[column])}) :
+  etatCourant.pokemon.sort(function(a,b) {return a[column][0].localeCompare(b[column][0])}) :
+  etatCourant.pokemon.sort(function(a,b) {return b[column][0].localeCompare(a[column][0])})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}
+function triAbilities(etatCourant, direction, column){
+  //const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  //etatCourant.pokemon.sort((a, b) => {return a[column][0].localeCompare(b[column])}) :
+  etatCourant.initialData.sort(function(a,b) {return a.Abilities[0].localeCompare(b.Abilities[0])}) :
+  etatCourant.initialData.sort(function(a,b) {return b[column][0].localeCompare(a[column][0])})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    initialData : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}
+function triTypes(etatCourant, direction, column){
+  //const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  //etatCourant.pokemon.sort((a, b) => {return a[column][0].localeCompare(b[column])}) :
+  etatCourant.initialData.sort(function(a,b) {
+    return a.Types.length < b.Types.length ?
+      a.PokedexNumber - b.PokedexNumber && a.Types[0].localeCompare(b.Types[0]) :
+      //b.Types[0].localeCompare(a.Types)
+      a.Types.length > b.Types.length ?
+        b.PokedexNumber - a.PokedexNumber && a.Types[0].localeCompare(b.Types) && a.Types[1].localeCompare(b.Types):
+        a.Types[0] == b.Types[0] && a.Types.length == b.Types.length == 2 ? 
+          a.Types[1].localeCompare(b.Types[1]):
+          console.log(a.Types[1].localeCompare(b.Types), a.Name, " " , b.Name)
+    }) :
+  etatCourant.initialData.sort(function(a,b) {return b[column].localeCompare(a[column])})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    initialData : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
 }
 
-/*
-function sortTabPoke(table,col, asc =true){
-  const modif = asc ? 1 : -1;
-  const bodyTable = table.bodiesTable[0];
-  const row = Array.from(bodyTable.querySelectorAll("tr"));
-
-  const sortRow = row.sort((a,b)=>{
-    const aCol= a.querySelector(`td:nth-child(${col +1})`);
-    const bCol= b.querySelector(`td:nth-child(${col +1})`);
-    console.log(aCol);
-    console.log(bCol);
+/*function triArray(etatCourant, direction, column){
+  const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  //etatCourant.pokemon.sort((a, b) => {return a[column][0].localeCompare(b[column])}) :
+  etatCourant.pokemon.sort(function(a,b) {return a.Types[0] - b.Types[0]}) :
+  etatCourant.pokemon.sort(function(a,b) {return a.Types[0] - b.Types[0]})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
   })
 }*/
+
+/*function triArray(etatCourant, direction, column){
+  const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  //etatCourant.pokemon.sort((a, b) => {return a[column][0].localeCompare(b[column])}) :
+  etatCourant.pokemon.sort(function(a,b) {
+    return a.Types.length == 1 && b.Types.length == 2 ?
+      a[column][0].localeCompare(b[column][0]) && a[column][0].localeCompare(b[column][1]) :
+      a.Types.length == 2 && b.Types.length == 1 ?
+        a[column][0].localeCompare(b[column][0]) && a[column][0].localeCompare(b[column][1]) :
+        " "
+  }) :
+  etatCourant.pokemon.sort(function(a,b) {return b[column][0].localeCompare(a[column][0])})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}*/
+
+/*function triTypes(etatCourant, direction, column){
+  const id = document.getElementById(column)
+  const sortedTable = (direction === "asc" ? 
+  /*etatCourant.pokemon.sort(function(a,b) {
+    return a[column].length == 1 && b[column].length == 2 ?
+      a[column][0] -b[column][0] && a[column][0]-b[column][1] :
+      a[column].length == 2 && b[column].length == 1 ?
+        a[column][0]-b[column][0] && a[column][0]-b[column][1]:
+        console.log("brudda")
+  }) :*/
+  /*etatCourant.pokemon.sort(function(a,b) {
+     return a[column][0].localeCompare(b[column][0])
+        //console.log("brudda")
+  }) :
+  etatCourant.pokemon.sort(function(a,b) {return b[column][0].localeCompare(a[column][0])})
+  )
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}*/
+
+
+/*function triArray(etatCourant, direction, column){
+  console.log(
+    etatCourant.pokemon[0].Types.length == etatCourant.pokemon[1].Types.length ? etatCourant.pokemon.sort((a,b) => console.log( etatCourant.pokemon[3].Types[0].localeCompare(etatCourant.pokemon[443].Types[0]) )) /*- etatCourant.pokemon[3].Types[0]*/ /*: console.log("F  "))*/
+    
+  //const id = document.getElementById(column)
+  //const sortedTable = (direction === "asc" ? 
+
+    /*etatCourant.pokemon.sort(function(a,b) { 
+      return  a.Types[0] == b.Types[0] && a.Types.length == b.Types.length == 2 ? 
+      console.log("not workddfsdddddddddddddddddddDDing1") && a.Types[1] - b.Types[1] :
+        a.Types[0] == b.Types[0] && a.Types.length == 2 && b.Types.length == 1 ?
+          a.Types[0].localeCompare(b.Types[0]) :
+          a.Types[0] != b.Types[0] && a.Types.length == 1 && b.Types.length == 2 ?
+            a.Types[0].localeCompare(b.Types[0]) && a.Types[0].localeCompare(b.Types[1]) :
+            a.Types[0] != b.Types[0] && a.Types.length == 1 || a.Types.length == 2 &&  b.Types.length == 1 && b.Types.length == 2 ?
+              a.Types[0].localeCompare(b.Types[0]) : 
+              console.log("Error1") 
+      }
+    ): 
+    etatCourant.pokemon.sort(function(a,b) { 
+      return a.Types[0] == b.Types[0] && a.Types.length == b.Types.length == 2 ? 
+        b.Types[1] - a.Types[1]:
+        a.Types[0] == b.Types[0] && a.Types.length == 2 && b.Types.length == 1 ?
+          b.Types[0] - a.Types[0] :
+          a.Types[0] != b.Types[0] && a.Types.length == b.Types.length == 2 ?
+            b.Types[0] - a.Types[0] && b.Types[1] - a.Types[1] :
+            a.Types[0] != b.Types[0] && a.Types.length == 1 || a.Types.length == 2 &&  b.Types.length == 1 && b.Types.length == 2 ?
+              a.Types[0] - b.Types[0] : 
+              console.log("Error2")
+      }
+    )*/
+    /*  a.Types.length == 1 && b.Types.length == 2 ?
+        a.Types[0].localeCompare(b.Types[0]) && a.Types[0].localeCompare(b.Types[1])
+
+
+  )
+  //console.log("done?")
+  console.log(sortedTable)
+  majEtatEtPage(etatCourant, {
+    pokemon : sortedTable,
+    triDirection : direction,
+    triColumn : column,
+  })
+}*/
+function switchTri(etatCourant, column){
+  //const sortedTypeColumn = typeof column;
+  console.log(column);
+  switch(column){
+    case "PokedexNumber" : 
+      //console.log("aaaaa")
+      triNumber(etatCourant, "asc","PokedexNumber");
+      break;
+    case "Name" :
+      triString(etatCourant, "asc", "Name");
+      break;
+    case "Abilities" :
+      triArray(etatCourant,"asc","Abilities" );
+      break;
+    case "Types" :
+      triArray(etatCourant, "asc","Types");
+      break;
+ }
+}
+function inverse(etatCourant, column){
+  const facing = (etatCourant.triDirection == "asc" ? "fa-angle-down" : "fa-angle-down");
+  const newDir = (
+    etatCourant.triDirection === "asc" ? 
+      etatCourant.triDirection = "desc" : 
+      etatCourant.triDirection = "asc");
+  return document.getElementById(column).classList.add(facing);
+}
+
+
 /**
  * Génére le code HTML de la page ainsi que l'ensemble des callbacks à
  * enregistrer sur les éléments de cette page.
@@ -419,8 +667,8 @@ function generePage(etatCourant) {
   // modaleLogin portent sur des zone différentes de la page et n'ont pas
   // d'éléments en commun.
   return {
-    html: barredeNavigation.html + modaleLogin.html + tabPoke.html + tab.html,
-    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...tabPoke.callbacks, ...tab.callbacks},
+    html: barredeNavigation.html + modaleLogin.html + tabPoke.html + tab.html /*+ tri.html*/,
+    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...tabPoke.callbacks,...tab.callbacks/*, ...tri.callbacks*/},
   };
 }
 
@@ -441,7 +689,6 @@ function generePage(etatCourant) {
 
 function majEtatEtPage(etatCourant, champsMisAJour) {
   const nouvelEtat = { ...etatCourant, ...champsMisAJour };
-  console.log(nouvelEtat.pokemon);
   majPage(nouvelEtat);
 }
 
