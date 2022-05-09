@@ -12,6 +12,7 @@ const serverUrl = "https://lifap5.univ-lyon1.fr";
 /**
  * Fait une requête GET authentifiée sur /whoami
  * @returns une promesse du login utilisateur ou du message d'erreur
+ * @param api clef API
  */
 
  function fetchWhoami(api) {
@@ -29,6 +30,11 @@ const serverUrl = "https://lifap5.univ-lyon1.fr";
     .catch((erreur) => ({ err: erreur }));
 }
 
+/**
+ * Fait une requête GET authentifiée sur /pokemon
+ * @returns une promesse pour recuperer les donnees de tous les pokemon 
+et les stocker dans un .json ou un message d'erreur
+ */
 function fetchPokemon() {
   return fetch(serverUrl + "/pokemon")
     .then((response) => {
@@ -49,6 +55,7 @@ function fetchPokemon() {
  * de l'utilisateur puis déclenche l'affichage de cette modale.
  *
  * @param {Etat} etatCourant l'état courant
+ * @param api clef API
  * @returns Une promesse de mise à jour
  */
  function lanceWhoamiEtInsereLogin(api,etatCourant) {
@@ -56,11 +63,19 @@ function fetchPokemon() {
     majEtatEtPage(etatCourant, {
       login: data.user, // qui vaut undefined en cas d'erreur
       errLogin: data.err, // qui vaut undefined si tout va bien
-      loginModal: true, // on affiche la modale
+      loginModal: false, // on affiche la modale
     });
   });
 }
 
+
+/**
+ * Fait une requête sur le serveur et insère les donnees recuperées du fetch 
+ * puis déclenche l'affichage de ces donnees.
+ *
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jou
+ */
 function lancePoke(etatCourant) {
   return fetchPokemon().then((data) => {
     console.log(data)
@@ -79,6 +94,11 @@ function lancePoke(etatCourant) {
   });
 }
 
+/**
+ * Fonction permet d'afficher mes donnees sous forme une liste
+ * @param liste 
+ * @returns affichage d'une liste 
+ */
 function lister(liste){
   return liste.reduce((acc,e)=> acc+`<ul><li>${e}</li></ul>`);
 }
@@ -106,8 +126,7 @@ function genereModaleLoginBody(etatCourant) {
     <p>${text}</p>
   </section>
   `,
-    callbacks: {
-  },
+    callbacks: {},
   };
 }
 
@@ -240,6 +259,11 @@ function genereBoutonConnexion(etatCourant) {
   };
 }
 
+/**
+ * Génère le code HTML les champs de la barre de navigation de la page et les callbacks associés.
+ * @param {Etat} etatCourant
+ * @returns un objet contenant le code HTML dans le champ html
+ */
 function genereNav(etatCourant){
   return {
     html: `
@@ -265,7 +289,6 @@ function genereNav(etatCourant){
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
-
  function genereBarreNavigation(etatCourant) {
   const connexion = genereBoutonConnexion(etatCourant);
   const nav = genereNav(etatCourant);
@@ -288,15 +311,13 @@ function genereNav(etatCourant){
   };
 }
 
+/**
+ * Génère le code HTML des donnees des pokemons recuperées et les callbacks associés.
+ * @returns une liste de 10 pokemons et le code HTML contenant le nom, image, nombre, abilities 
+ * et les types associees à chaque pokemon dans le champ html 
+ */
 function generePokemon(etatCourant) {
   const tab = etatCourant.pokemon;
- /* const callBackMap = etatCourant.inputSearch=== undefined ?
-      Pokemons.slice(0,etatCourant.NbPoke)
-      .map( (n) => clickPokeSelect(etatCourant,n)):
-      tab.slice(0,etatCourant.NbPokemonAffiche)
-      .map((n)=> clickPokeSelect(etatCourant,n)); 
-      const callbacks = callBackMap.reduce( (acc,l) => ( {...acc, ...l }), {});
-        console.log(callbacks);*/
   return { 
     html:
     tab.filter((_,i) => i < etatCourant.NbPokemonAffiche).reduce((acc, poke) => acc + `
@@ -311,11 +332,11 @@ function generePokemon(etatCourant) {
       <td>${lister(poke.Abilities)}</td>
       <td>${lister(poke.Types)}</td>
     </tr>`, ``),
-    callbacks: {
-      },
+    callbacks: {},
   };
 }
 
+//////////////////////////////////////////////////////////////////
 function clickPokeSelect(etatCourant, poke)
         {
           const callback = {};
@@ -325,6 +346,12 @@ function clickPokeSelect(etatCourant, poke)
 
         }
 
+
+/**
+ * Génère le code HTML des entetes de la colonne des images des pokemons 
+ * de la table qui affichera les pokemons 
+ * @returns le code HTML de la colonne images dans le champ html 
+ */
 function genereImageHeader(){
   return {
     html: `
@@ -338,6 +365,11 @@ function genereImageHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML des entetes de la colonne du numero des pokemons 
+ * de la table qui affichera les pokemons 
+ * @returns le code HTML de la colonne numero dans le champ html 
+ */
 function genereNumberHeader(){
   return {
     html: `
@@ -351,6 +383,11 @@ function genereNumberHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML des entetes de la colonne du nom des pokemons 
+ * de la table qui affichera les pokemons 
+ * @returns le code HTML de la colonne nom dans le champ html 
+ */
 function genereNameHeader(){
   return {
     html: `
@@ -364,6 +401,11 @@ function genereNameHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML des entetes de la colonne des Abilities des pokemons 
+ * de la table qui affichera les pokemons 
+ * @returns le code HTML de la colonne Abilities dans le champ html 
+ */
 function genereAbilityHeader(){
   return {
     html: `
@@ -377,6 +419,11 @@ function genereAbilityHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML des entetes de la colonne des Types des pokemons 
+ * de la table qui affichera les pokemons 
+ * @returns le code HTML de la colonne Types dans le champ html 
+ */
 function genereTypesHeader(){
   return {
     html: `
@@ -390,6 +437,11 @@ function genereTypesHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML qui cree la table avec les colonnes images, number,
+ * name,  Abilities, Types
+ * @returns le code HTML de la table crée dans le champ html 
+ */
 function pokeHeader(){
   const imHeader = genereImageHeader();
   const numHeader = genereNumberHeader();
@@ -411,6 +463,13 @@ function pokeHeader(){
   }; 
 }
 
+/**
+ * Génère le code HTML la table qui affiche tous les pokemons
+ * avec leur details.
+ * @param {Etat} etatCourant
+ * @returns un objet contenant le code HTML de la table qui retourne 
+ * les details de chaque pokemons de la table dans le champ html
+ */
 function genereHeader(etatCourant){
   const pHeader = pokeHeader();
   const TabPok=generePokemon(etatCourant);
@@ -420,11 +479,18 @@ function genereHeader(etatCourant){
           <tbody>${TabPok.html}</tbody>
         </table>
       </div>`,
-    callbacks: {"is-selected":{ onclick : () => {/*clickPokeSelect(etatCourant, poke),*/ console.log("a")} },
-  },
+    callbacks: {"is-selected":{ onclick : () => {console.log("a")} },
+    },
   };
 }
 
+/**
+ * Génère le code HTML de la table des donnees des pokemons recuperées et les callbacks associés.
+ * @param {Etat} etatCourant
+ * @returns une liste de 10 pokemons et le code HTML contenant le nom, image, nombre, abilities 
+ * et les types associees à chaque pokemon dans le champ html et la description
+ * des callbacks à enregistrer dans le champ callbacks
+ */
 function genereTabPok(etatCourant){
   const header = genereHeader(etatCourant);
   return { 
@@ -439,7 +505,12 @@ function genereTabPok(etatCourant){
   };
 }
 
-
+/**
+ * Génère le code HTML pour afficher les detailes de chaque pokemon 
+ * de la table et les callbacks associés.
+ * @bug n'affiche pas des erreurs dans la console mais elle case 
+ * tous les autres fonctions
+/*
 function detailsHeader(poke){
   return{
     html:`
@@ -460,7 +531,7 @@ function detailsHeader(poke){
   };
 }
 
-/*function detailsBody(etatCourant, weakAgainst, resAgainst){
+function detailsBody(etatCourant, weakAgainst, resAgainst){
   console.log(etatCourant.pokemon) 
   return {
     html:` 
@@ -484,7 +555,7 @@ function detailsHeader(poke){
   callbacks: {}
   };
  
-}*/
+}
 
 function imageFull(poke){
   return{
@@ -531,12 +602,6 @@ function AfficheSelectedPokemon(etatCourant){
   console.log(against);
   const weak = against.filter((a) => etatCourant.selectedPoke.Against[a] > 1);
   const resistant = against.filter((b) => etatCourant.selectedPoke.Against[b] < 1);
-  //const dHeader = detailsHeader(poke);
-  //const dBody = detailsBody(poke);
-  //const dImg = imageFull(poke);
-  //const dFooter = detailsFooter();
-  //${detailsBody(poke, weak, resistant)}
-  console.log("yee")
   
   return {
     html:
@@ -594,7 +659,13 @@ function genereSelectedPokemon(etatCourant) {
     callbacks: {}
   };
 }
+*/
 
+/**
+ * Fait une requête sur le serveur et insère 10 pokemons.
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jour
+ */
 function addPokemon(etatCourant){
   majEtatEtPage(etatCourant, {
    NbPokemonAffiche : etatCourant.NbPokemonAffiche+10, 
@@ -602,6 +673,12 @@ function addPokemon(etatCourant){
   })
 }
  
+
+/**
+ * Fait une requête sur le serveur et enleve 10 pokemons.
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jour
+ */
 function removePokemon(etatCourant){
   majEtatEtPage(etatCourant, {
   NbPokemonAffiche : etatCourant.NbPokemonAffiche-10, 
@@ -609,9 +686,21 @@ function removePokemon(etatCourant){
   })
 }
 
+/**
+ * Fonction qui genere le code HTML d'affichage des boutons more et less
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jour
+ */
 function genereBoutonAff(etatCourant){
   const NbA = etatCourant.NbPokemonAffiche;
   const NbF = etatCourant.NbPokemonFiltre;
+  /*si le nombre des pokemons filtrés dans notre page et plus petit que 10
+  on supprime les deux boutons more et less . */
+  /*sinon si le nombre des pokemons affichees et plus petit que le nombre des pokemons filtrés 
+  dans notre page on affiche le bouton more pour afficher 10 pokemons par 10 */
+  /*si le nombre des pokemons affichée dans notre page et plus petit que 10
+  on supprime les deux boutons more et less . */
+
   return {
     html:  `
       <div class = "buttons">
@@ -629,6 +718,11 @@ function genereBoutonAff(etatCourant){
   };
 }
 
+/**
+ * Fait une requête sur le serveur et recupere les elements saisies dans la barre de recherche.
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jour
+ */
 function searchPokemon(etatCourant){
   const value = document.getElementById("iSearch").value
   const filteredTable = etatCourant.iData
@@ -641,6 +735,12 @@ function searchPokemon(etatCourant){
    });
 }
 
+/**
+ * Fait une requête sur le serveur et fait le tri des Image en fonction 
+ * des nombres des pokemons.
+ * @param {Etat} etatCourant l'état courant
+ * @returns Une promesse de mise à jour
+ */
 function displayImage(etatCourant){
   etatCourant.iData.sort((a, b) => a.PokedexNumber -b.PokedexNumber)
   majEtatEtPage(etatCourant)
@@ -756,7 +856,7 @@ function generePage(etatCourant) {
   const modaleLogin = genereModaleLogin(etatCourant);
   const tabPoke = genereTabPok(etatCourant);
   const tab = genereBoutonAff(etatCourant);
-  const affSelected = AfficheSelectedPokemon(etatCourant);
+ // const affSelected = AfficheSelectedPokemon(etatCourant);
   // remarquer l'usage de la notation ... ci-dessous qui permet de "fusionner"
   // les dictionnaires de callbacks qui viennent de la barre et de la modale.
   // Attention, les callbacks définis dans modaleLogin.callbacks vont écraser
@@ -765,8 +865,8 @@ function generePage(etatCourant) {
   // modaleLogin portent sur des zone différentes de la page et n'ont pas
   // d'éléments en commun.
   return {
-    html: barredeNavigation.html + modaleLogin.html + tabPoke.html + tab.html + affSelected.html,
-    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...tabPoke.callbacks,...tab.callbacks, ...affSelected.callbacks},
+    html: barredeNavigation.html + modaleLogin.html + tabPoke.html + tab.html /*+ affSelected.html*/,
+    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...tabPoke.callbacks,...tab.callbacks,/* ...affSelected.callbacks*/},
   };
 }
 
