@@ -12,9 +12,7 @@ const serverUrl = "https://lifap5.univ-lyon1.fr";
 /**
  * Fait une requête GET authentifiée sur /whoami
  * @returns une promesse du login utilisateur ou du message d'erreur
- * @param api clef API
  */
-
  function fetchWhoami(api) {
   return fetch(serverUrl + "/whoami", { headers: { "Api-Key": api } })
     .then((response) => {
@@ -68,21 +66,27 @@ function fetchPokemon() {
   });
 }
 
-
 /**
  * Fait une requête sur le serveur et insère les donnees recuperées du fetch 
  * puis déclenche l'affichage de ces donnees.
  *
  * @param {Etat} etatCourant l'état courant
  * @returns Une promesse de mise à jou
+ * @iData contient les données initiales recu par le fetch
+ * @NbPokemonFiltre On l'initialise à 10 mais après on lui affecte le nombre de pokemon 
+ *                  qu'on veut afficher
+ * @dirNum sens de tri pour le PokédexNumber
+ * @dirName sens de tri pour le Name
+ * @dirAb sens de tri pour les Abilities
+ * @dirT sens de tri pour les Types
  */
 function lancePoke(etatCourant) {
   return fetchPokemon().then((data) => {
     console.log(data)
     majEtatEtPage(etatCourant, {
-      pokemon: data.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber})),
+      pokemons: data.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber})),
       iData : data,
-      inputSearch: "",
+      inputSearch: "", 
       NbPokemonAffiche: 10,
       NbPokemonFiltre : 10, 
       dirNum : false,
@@ -126,7 +130,8 @@ function genereModaleLoginBody(etatCourant) {
     <p>${text}</p>
   </section>
   `,
-    callbacks: {},
+    callbacks: {
+  },
   };
 }
 
@@ -227,40 +232,56 @@ function afficheModaleConnexion(etatCourant) {
 }
 
 /**
- * Génère le code HTML et les callbacks pour la partie droite de la barre de
- * navigation qui contient le bouton de login.
+ * Génère le code HTML qui permet d'afficher le boutton de connexion.
+ * @param {Etat} etatCourant
+ * @returns retourne le code HTML qui genere le bouton de connexion.
+ */
+function BoutonConnexionHtml(etatCourant){
+  return{
+    html:`
+      <div class="navbar-end">
+        <div class="navbar-item">
+          <div class="buttons">
+            ${etatCourant.login === undefined ? 
+              `<a id="btn-open-login-modal" class="button is-light">
+                Connexion</a>`:
+              `<p>${etatCourant.login}</p>
+              <a id="btn-dc-login-modal" class="button is-light">
+                Déconnexion</a>`}
+          </div>
+        </div>
+      </div>`
+  }
+}
+
+/**
+ * Appelle la fonction qui génère le code HTML et on génère les callbacks 
+ * pour la partie droite de la barre de navigation qui contient le bouton de login.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
  */
 function genereBoutonConnexion(etatCourant) {
-  const html = `
-  <div class="navbar-end">
-    <div class="navbar-item">
-      <div class="buttons">
-      ${etatCourant.login === undefined 
-      ? `<a id="btn-open-login-modal" class="button is-light"> Connexion </a>`
-      : `<p>${etatCourant.login}</p>
-      <a id="btn-dc-login-modal" class="button is-light"> Déconnexion </a>`}
-        
-      </div>
-    </div>
-  </div>`;
-  return {
-    html: html,
+  const connexionHtml = BoutonConnexionHtml(etatCourant);
+  return{ 
+    html :`
+    ${connexionHtml.html}`,
     callbacks: {
-      "btn-open-login-modal": {
-        onclick: () => majEtatEtPage(etatCourant, {loginModal: true}),
-      },
-      "btn-dc-login-modal":{
-        onclick: () => majEtatEtPage(etatCourant, {login: undefined})
-      }
+      "btn-open-login-modal" : { onclick : () => majEtatEtPage(etatCourant,{
+          loginModal:true}),
+        },
+      "btn-dc-login-modal" : { onclick : () => majEtatEtPage(etatCourant,{
+          login:undefined})
+        }
     },
   };
 }
 
 /**
- * Génère le code HTML les champs de la barre de navigation de la page et les callbacks associés.
+ * Génère le code HTML les champs de la barre de navigation de la page.
+ * Le boutton "Search" permet d'effectuer la recherche.
+ * Le boutton Pokédex te remet à la page initiale avec 10 pokemons affichés.
+ * Le boutton Combat permet de lancer un combat.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html
  */
@@ -278,13 +299,13 @@ function genereNav(etatCourant){
           <a id="btn-search" class="button is-light"> Search </a>
           <a id="btn-pokedex" class="button is-light"> Pokedex </a>
           <a id="btn-combat" class="button is-light"> Combat </a>
-        </div></div>`,
-    callbacks: {},
+        </div></div>`
   }; 
 }
 
 /**
- * Génère le code HTML de la barre de navigation et les callbacks associés.
+ * Appelle la fonction qui genere le code HTML de la barre de navigation et 
+ * effectue les callbacks associés.
  * @param {Etat} etatCourant
  * @returns un objet contenant le code HTML dans le champ html et la description
  * des callbacks à enregistrer dans le champ callbacks
@@ -307,7 +328,7 @@ function genereNav(etatCourant){
         NbPokemonAffiche : 10, 
         NbPokemonFiltre : 10}) 
       }} 
-    },
+    }
   };
 }
 
@@ -317,35 +338,24 @@ function genereNav(etatCourant){
  * et les types associees à chaque pokemon dans le champ html 
  */
 function generePokemon(etatCourant) {
-  const tab = etatCourant.pokemon;
+  const tab = etatCourant.pokemons;
   return { 
-    html:
-    tab.filter((_,i) => i < etatCourant.NbPokemonAffiche).reduce((acc, poke) => acc + `
-  <tr >
-      <td id="is-selected"><img
-              alt="${poke.Name}"
-              src="${poke.Images.Detail}"
-              width="64" />
-      </td>
-      <td><div class="content">${poke.PokedexNumber}</div></td>
-      <td><div class="content">${poke.Name}</div></td>
-      <td>${lister(poke.Abilities)}</td>
-      <td>${lister(poke.Types)}</td>
-    </tr>`, ``),
-    callbacks: {},
+    html: 
+      tab.filter((_,i) => i < etatCourant.NbPokemonAffiche)
+        .reduce((acc, poke) => acc + `
+          <tr >
+            <td id="is-selected"><img
+                    alt="${poke.Name}"
+                    src="${poke.Images.Detail}"
+                    width="64" />
+            </td>
+            <td><div class="content">${poke.PokedexNumber}</div></td>
+            <td><div class="content">${poke.Name}</div></td>
+            <td>${lister(poke.Abilities)}</td>
+            <td>${lister(poke.Types)}</td>
+          </tr>`, ``)
   };
 }
-
-//////////////////////////////////////////////////////////////////
-function clickPokeSelect(etatCourant, poke)
-        {
-          const callback = {};
-          callback[`${poke.PokedexNumber}`] 
-          = {"onclick": () => majEtatEtPage(etatCourant,{PokeSelect:poke}) };
-          return callback;
-
-        }
-
 
 /**
  * Génère le code HTML des entetes de la colonne des images des pokemons 
@@ -360,8 +370,7 @@ function genereImageHeader(){
         <span>
           <i id="imIcon" class ="fas"></i>
         </span>
-      </th>`,
-    callbacks: {},
+      </th>`
   }; 
 }
 
@@ -378,8 +387,7 @@ function genereNumberHeader(){
         <span id="sNumber">
           <i id="numIcon" class ="fas"></i>
         </span>
-      </th>`,
-    callbacks: {},
+      </th>`
   }; 
 }
 
@@ -396,8 +404,7 @@ function genereNameHeader(){
         <span id="sName">
           <i id="nameIcon" class ="fas"></i>
         </span>
-      </th>`,
-    callbacks: {},
+      </th>`
   }; 
 }
 
@@ -414,8 +421,7 @@ function genereAbilityHeader(){
         <span id="sAbility">
           <i id="abIcon" class ="fas"></i>
         </span>
-      </th>`,
-    callbacks: {},
+      </th>`
   }; 
 }
 
@@ -432,8 +438,7 @@ function genereTypesHeader(){
         <span id="sType">
           <i id="typeIcon" class ="fas"></i>
         </span>
-      </th>`,
-    callbacks: {},
+      </th>`
   }; 
 }
 
@@ -459,7 +464,6 @@ function pokeHeader(){
             ${abiHeader.html}
             ${tyHeader.html}
           </tr></thead>`,
-    callbacks: {},
   }; 
 }
 
@@ -479,7 +483,7 @@ function genereHeader(etatCourant){
           <tbody>${TabPok.html}</tbody>
         </table>
       </div>`,
-    callbacks: {"is-selected":{ onclick : () => {console.log("a")} },
+    callbacks: {"is-selected":{ onclick : () => {console.log( ":'( ")} },
     },
   };
 }
@@ -489,7 +493,7 @@ function genereHeader(etatCourant){
  * @param {Etat} etatCourant
  * @returns une liste de 10 pokemons et le code HTML contenant le nom, image, nombre, abilities 
  * et les types associees à chaque pokemon dans le champ html et la description
- * des callbacks à enregistrer dans le champ callbacks
+ * des callbacks à enregistrer dans le champ callbacks.
  */
 function genereTabPok(etatCourant){
   const header = genereHeader(etatCourant);
@@ -506,82 +510,87 @@ function genereTabPok(etatCourant){
 }
 
 /**
- * Génère le code HTML pour afficher les detailes de chaque pokemon 
- * de la table et les callbacks associés.
+ * Génère le code HTML pour afficher les détails de chaque pokemon 
+ * de la table.
  * @bug n'affiche pas des erreurs dans la console mais elle case 
- * tous les autres fonctions
-/*
+ * tous les autres fonctions si elle appele dans generePage()
+*/
 function detailsHeader(poke){
   return{
     html:`
-    <div class="column">
-   <div class="card">
-     <div class="card-header">
-       <div class="card-header-title">${poke.JapaneseName}</div>
-     </div>
-     <div class="card-content">
-       <article class="media">
-         <div class="media-content">
-           <h1 class="title">${poke.Name}</h1>
-         </div>
-       </article>
-     </div>
-     `,
-     callbacks: {}
+      <div class="column">
+      <div class="card">
+      <div class="card-header">
+      <div class="card-header-title">${poke.JapaneseName}</div>
+      </div>
+      <div class="card-content">
+        <article class="media">
+          <div class="media-content">
+            <h1 class="title">${poke.Name}</h1>
+          </div>
+        </article>
+      </div>`
   };
 }
 
-function detailsBody(etatCourant, weakAgainst, resAgainst){
-  console.log(etatCourant.pokemon) 
+/**
+ * Génère le code HTML pour afficher les points de vie, les Abilities
+ * la résistance et la faiblesse du pokemon.
+ * @bug n'affiche pas des erreurs dans la console mais elle case 
+ * tous les autres fonctions si elle appele dans generePage()
+*/
+function detailsBody(poke, weakAgainst, resAgainst){
   return {
     html:` 
-    <div class="card-content">
-       <article class="media">
-    <div class="media-content">
-    <div class="content has-text-left">
-      <p>Hit points: ${etatCourant.pokemon.Hp}</p>
-      <h3>Abilities</h3>
-      ${etatCourant.pokemon.Abilities.map( (a) => `<li> ${a} </li>`).join('\n') }
-                
-      <h3>Resistant against</h3>
-      ${resAgainst.map( (a) => `<li> ${a} </li>`).join('\n') }
-                
-      <h3>Weak against</h3>
-      ${weakAgainst.map( (a) => `<li> ${a} </li>`).join('\n') }
-                
-    </div>
-  </div>
-  `,
-  callbacks: {}
+      <div class="card-content">
+        <article class="media">
+      <div class="media-content">
+      <div class="content has-text-left">
+        <p>Hit points: ${poke.Hp}</p>
+        <h3>Abilities</h3>
+        ${poke.Abilities.map((a) => `<li> ${a} </li>`).join('\n')}
+        <h3>Resistant against</h3>
+        ${resAgainst.map( (a) => `<li> ${a} </li>`).join('\n') }  
+        <h3>Weak against</h3>
+        ${weakAgainst.map( (a) => `<li> ${a} </li>`).join('\n') }
+        </div>
+      </div>`
   };
- 
 }
 
+/**
+ * Génère le code HTML pour afficher une image plus grande du pokemon
+ * sélectionné: 
+ * @bug n'affiche pas des erreurs dans la console mais elle case 
+ * tous les autres fonctions si elle appele dans generePage()
+*/
 function imageFull(poke){
   return{
-    html: `<figure class="media-right">
-    <figure class="image is-475x475">
-      <img
-        class=""
-        src=${poke.Images.Full}
-        alt=${poke.Name}
-      />
-    </figure>
-  </figure>
-</article>
-</div>`,
-callbacks: {}
+    html: `
+          <figure class="media-right">
+          <figure class="image is-475x475">
+            <img
+              class=""
+              src=${poke.Images.Full}
+              alt=${poke.Name}
+            />
+          </figure>
+          </figure>
+        </article>
+      </div>`
   };
-  
 }
 
+/**
+ * Génère le code HTML du footer des détails des pokemon. On a un boutton
+ * qui permet d'ajouter des pokemons à un deck.
+ * @bug n'affiche pas des erreurs dans la console mais elle case 
+ * tous les autres fonctions si elle appele dans generePage()
+*/
 function detailsFooter(){
   return {
     html:`
     <div class="card-footer">
-       
-     
-     
     <article class="media">
          <div class="media-content">
            <button class="is-success button" tabindex="0">
@@ -592,74 +601,31 @@ function detailsFooter(){
        </div>
        </div>
        </div>
-      </div> `,
-      callbacks: {}
+      </div> `
   };
 }
 
+/**
+ * Génère TOUT le code HTML qui permet d'afficher la table qui contient tous 
+ * les détails du pokemons sélectionné avec ses détails.
+* @bug n'affiche pas des erreurs dans la console mais elle case 
+ * tous les autres fonctions si elle appele dans generePage()
+*/
 function AfficheSelectedPokemon(etatCourant){
   const against = Object.keys(etatCourant.selectedPoke.Against);
   console.log(against);
-  const weak = against.filter((a) => etatCourant.selectedPoke.Against[a] > 1);
-  const resistant = against.filter((b) => etatCourant.selectedPoke.Against[b] < 1);
-  
+  const weak=against.filter((a)=>etatCourant.selectedPoke.Against[a]>1);
+  const resistant=against.filter((b)=>etatCourant.selectedPoke.Against[b]<1);
   return {
     html:
-    against.reduce((acc, poke) => acc +
-    ` 
-     ${detailsHeader(poke)}
-    
-     <div class="card-content">
-       <article class="media">
-    <div class="media-content">
-    <div class="content has-text-left">
-      <p>Hit points: ${poke.Hp}</p>
-      <h3>Abilities</h3>
-     
-      <h3>Resistant against</h3>
-      ${resistant.map( (a) => `<li> ${a} </li>`).join('\n') }
-                
-      <h3>Weak against</h3>
-      ${weak.map( (a) => `<li> ${a} </li>`).join('\n') }
-                
-    </div>
-  </div>
-  
-     ${imageFull(etatCourant.selectedPoke)}
-     ${detailsFooter()}
-     `,),
-    callbacks : {}
-  };
-
-}
-
-
-function genereSelectedPokemon(etatCourant) {
-  const against = Object.keys(etatCourant.PokeSelect.Against);
-  const againstRes = against.filter( (w) => etatCourant.PokeSelect.Against[w] < 1);
-  const againstWeak = against.filter( (w) => etatCourant.PokeSelect.Against[w] > 1);
-  return {
-    html:`
-    <div class="column" style="float:left; width: 50%;">
-      <div class="card">
-        ${AfficheUnPokeHeader(etatCourant.PokeSelect)}
-        <div class="card-content">
-          <article class="media">
-            ${AfficheUnPokeBody(etatCourant.PokeSelect
-              ,againstRes,againstWeak)}
-            ${AfficheUnPokeImage(etatCourant.PokeSelect)}
-          </article>
-        </div>
-        <div class="card-footer">
-              ${AfficheUnPokeFooter()}
-        </div>
-      </div>
-    </div>
-    `,
-    callbacks: {}
+    against.reduce((acc, poke) => acc +` 
+      ${detailsHeader(poke)}
+      ${detailsBody(etatCourant.selectedPoke, weak, resistant)}
+      ${imageFull(etatCourant.selectedPoke)}
+      ${detailsFooter()}
+    `,)
   };
 }
-*/
 
 /**
  * Fait une requête sur le serveur et insère 10 pokemons.
@@ -669,11 +635,10 @@ function genereSelectedPokemon(etatCourant) {
 function addPokemon(etatCourant){
   majEtatEtPage(etatCourant, {
    NbPokemonAffiche : etatCourant.NbPokemonAffiche+10, 
-   NbPokemonFiltre : etatCourant.pokemon.length,
+   NbPokemonFiltre : etatCourant.pokemons.length,
   })
 }
  
-
 /**
  * Fait une requête sur le serveur et enleve 10 pokemons.
  * @param {Etat} etatCourant l'état courant
@@ -682,25 +647,19 @@ function addPokemon(etatCourant){
 function removePokemon(etatCourant){
   majEtatEtPage(etatCourant, {
   NbPokemonAffiche : etatCourant.NbPokemonAffiche-10, 
-  NbPokemonFiltre : etatCourant.pokemon.length,
+  NbPokemonFiltre : etatCourant.pokemons.length,
   })
 }
 
 /**
  * Fonction qui genere le code HTML d'affichage des boutons more et less
+ * et de traiter les callbacks associés.
  * @param {Etat} etatCourant l'état courant
  * @returns Une promesse de mise à jour
  */
 function genereBoutonAff(etatCourant){
   const NbA = etatCourant.NbPokemonAffiche;
   const NbF = etatCourant.NbPokemonFiltre;
-  /*si le nombre des pokemons filtrés dans notre page et plus petit que 10
-  on supprime les deux boutons more et less . */
-  /*sinon si le nombre des pokemons affichees et plus petit que le nombre des pokemons filtrés 
-  dans notre page on affiche le bouton more pour afficher 10 pokemons par 10 */
-  /*si le nombre des pokemons affichée dans notre page et plus petit que 10
-  on supprime les deux boutons more et less . */
-
   return {
     html:  `
       <div class = "buttons">
@@ -747,6 +706,15 @@ function displayImage(etatCourant){
   inverseDir("imIcon",true);
 }
 
+/**
+ * Permet d'effectuer le tri sur les PokédexNumber des pokemons et de faire la mise à
+ * jour de la page pour que le tri soit afficher.
+ * @param {Etat} etatCourant,
+ * @param direction,
+ * @param column, 
+ * @returns une valeur qui vaut -1 quand a > b, qui vaut 1 quand a < b et qui vaut 0
+ * quand a = b.
+ */
 function triNumber(etatCourant, direction, column){
   const iData = etatCourant.iData;
   const sortedTable = (direction === true ? 
@@ -759,6 +727,15 @@ function triNumber(etatCourant, direction, column){
   })
 }
 
+/**
+ * Permet d'effectuer le tri sur le Name des pokemons et de faire la mise à
+ * jour de la page pour que le tri soit afficher.
+ * @param {Etat} etatCourant,
+ * @param direction,
+ * @param column, 
+ * @returns une valeur qui vaut -1 quand a > b, qui vaut 1 quand a < b et qui vaut 0
+ * quand a = b.
+ */
 function triString(etatCourant, direction, column){
   const iData = etatCourant.iData;
   etatCourant.iData.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber}))
@@ -766,13 +743,22 @@ function triString(etatCourant, direction, column){
     iData.sort((a, b) => {return a[column].localeCompare(b[column])}) :
     iData.sort((a, b) => {return b[column].localeCompare(a[column])})
   )
-  console.log(sortedTable)
   majEtatEtPage(etatCourant, {
     pokemon : sortedTable,
     dirName : !direction,
   })
 }
 
+/**
+ * Permet d'effectuer le tri sur les Abilities des pokemons. Si les deux Abilities sont egaux
+ * On trie sur les seconds Abilities. Elle fait aussi la mise à
+ * jour de la page pour que le tri soit afficher.
+ * @param {Etat} etatCourant,
+ * @param direction,
+ * @param column, 
+ * @returns une valeur qui vaut -1 quand a > b, qui vaut 1 quand a < b et qui vaut 0
+ * quand a = b.
+ */
 function triAbilities(etatCourant, direction, column){
   const iData = etatCourant.iData;
   iData.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber}))
@@ -795,6 +781,17 @@ function triAbilities(etatCourant, direction, column){
   })
 }
 
+
+/**
+ * Permet d'effectuer le tri sur les Types des pokemons. Si les deux Types sont egaux
+ * On trie sur les seconds Types. Elle fait aussi la mise à
+ * jour de la page pour que le tri soit afficher.
+ * @param {Etat} etatCourant,
+ * @param direction,
+ * @param column, 
+ * @returns une valeur qui vaut -1 quand a > b, qui vaut 1 quand a < b et qui vaut 0
+ * quand a = b.
+ */
 function triTypes(etatCourant, direction, column){
   const iData = etatCourant.iData;
   iData.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber}))
@@ -817,6 +814,13 @@ function triTypes(etatCourant, direction, column){
   })
 }
 
+/**
+ * Permet de faire un switch en fonction du clique de l'utilisateur sur le boutton pour trier 
+ * soit en fonction du PokédexNumber, le Name, les Abilities ou les Types.
+ * @param {Etat} etatCourant,
+ * @param column, 
+ * @returns le trie choisit par l'utilisateur
+ */
 function switchTri(etatCourant, column){
   const dnum = !etatCourant.dirNum; const dname = !etatCourant.dirName;
   const dAbi = !etatCourant.dirAb; const dTy = !etatCourant.dirT;
@@ -836,6 +840,13 @@ function switchTri(etatCourant, column){
   }
 }
 
+/**
+ * Permet de tester si le sens de trie est croissant ou décroissant. Elle nous 
+ * permet de génerer un des flèches qui suivent le sens du tri sur la colonne cliquée.
+ * @param {Etat} etatCourant,
+ * @param dir,
+ * @returns des flèches croissante ou décroissante en fonction de la direction donnée.
+ */
 function inverseDir(column, dir){
   const d = dir;
   d === true ? 
@@ -856,7 +867,7 @@ function generePage(etatCourant) {
   const modaleLogin = genereModaleLogin(etatCourant);
   const tabPoke = genereTabPok(etatCourant);
   const tab = genereBoutonAff(etatCourant);
- // const affSelected = AfficheSelectedPokemon(etatCourant);
+  //const affSelected = AfficheSelectedPokemon(etatCourant);
   // remarquer l'usage de la notation ... ci-dessous qui permet de "fusionner"
   // les dictionnaires de callbacks qui viennent de la barre et de la modale.
   // Attention, les callbacks définis dans modaleLogin.callbacks vont écraser
@@ -866,7 +877,8 @@ function generePage(etatCourant) {
   // d'éléments en commun.
   return {
     html: barredeNavigation.html + modaleLogin.html + tabPoke.html + tab.html /*+ affSelected.html*/,
-    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks, ...tabPoke.callbacks,...tab.callbacks,/* ...affSelected.callbacks*/},
+    callbacks: { ...barredeNavigation.callbacks, ...modaleLogin.callbacks,
+       ...tabPoke.callbacks,...tab.callbacks/*, ...affSelected.callbacks*/},
   };
 }
 
