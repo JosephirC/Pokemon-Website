@@ -84,7 +84,7 @@ function lancePoke(etatCourant) {
   return fetchPokemon().then((data) => {
     console.log(data)
     majEtatEtPage(etatCourant, {
-      pokemons: data.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber})),
+      pokemon: data.sort(((a, b)=>{return a.PokedexNumber-b.PokedexNumber})),
       iData : data,
       inputSearch: "", 
       NbPokemonAffiche: 10,
@@ -338,7 +338,7 @@ function genereNav(etatCourant){
  * et les types associees à chaque pokemon dans le champ html 
  */
 function generePokemon(etatCourant) {
-  const tab = etatCourant.pokemons;
+  const tab = etatCourant.pokemon;
   return { 
     html: 
       tab.filter((_,i) => i < etatCourant.NbPokemonAffiche)
@@ -635,7 +635,7 @@ function AfficheSelectedPokemon(etatCourant){
 function addPokemon(etatCourant){
   majEtatEtPage(etatCourant, {
    NbPokemonAffiche : etatCourant.NbPokemonAffiche+10, 
-   NbPokemonFiltre : etatCourant.pokemons.length,
+   NbPokemonFiltre : etatCourant.pokemon.length,
   })
 }
  
@@ -647,7 +647,7 @@ function addPokemon(etatCourant){
 function removePokemon(etatCourant){
   majEtatEtPage(etatCourant, {
   NbPokemonAffiche : etatCourant.NbPokemonAffiche-10, 
-  NbPokemonFiltre : etatCourant.pokemons.length,
+  NbPokemonFiltre : etatCourant.pokemon.length,
   })
 }
 
